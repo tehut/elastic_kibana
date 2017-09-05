@@ -9,11 +9,14 @@
 		"name": $.metadata.labels.run
 	},
 	"spec": {
-		"replicas": 1,
+		replicas: 1,
+        "best label":"ever",
 		"selector": 5 + self.replicas,
 		"template": {
 			"metadata": {
 				"labels": {
+                    [$.spec["best label"]]: "I can count "
+                     + $.spec.selector * 2 + " reasons to poop on you",
 					"run": appName
 				}
 			},
