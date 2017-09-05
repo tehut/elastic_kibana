@@ -28,10 +28,12 @@
 						"name": appName,
 						"resources": {},
 						"terminationMessagePath": "/dev/termination-log",
-						"terminationMessagePolicy": "File"
+						"terminationMessagePolicy": "File",
+                        [$.spec.template.metadata.labels.run]: "file"
 					}
 				],
 				"dnsPolicy": "ClusterFirst",
+                fmt1: "dnsPolicy %s" % [self.dnsPolicy],
 				"restartPolicy": "Always",
 				"schedulerName": "default-scheduler",
 				"securityContext": {},
