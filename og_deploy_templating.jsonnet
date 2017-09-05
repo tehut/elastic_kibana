@@ -6,7 +6,7 @@
 		"labels": {
 			"run": appName
 		},
-		"name": $.run
+		"name": $.metadata.labels.run
 	},
 	"spec": {
 		"replicas": 1,
