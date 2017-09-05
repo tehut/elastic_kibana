@@ -21,7 +21,7 @@
 				"containers": [
 					{
 						"image": "tehut/hootlet:latest",
-						"imagePullPolicy": "Always",
+						"imagePullPolicy": self.image,
 						"name": appName,
 						"resources": {},
 						"terminationMessagePath": "/dev/termination-log",
