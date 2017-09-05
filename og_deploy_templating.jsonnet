@@ -4,7 +4,9 @@
     local appName = "hootlet",
 	"metadata": {
 		"labels": {
-			"run": appName
+			"run": appName,
+            foo: [1, 2, 4],
+            "others":[x  for x in $.status.conditions],
 		},
 		"name": $.metadata.labels.run
 	},
