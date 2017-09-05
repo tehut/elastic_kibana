@@ -10,7 +10,7 @@
 	},
 	"spec": {
 		"replicas": 1,
-		"selector": null,
+		"selector": 5 + self.replicas,
 		"template": {
 			"metadata": {
 				"labels": {
