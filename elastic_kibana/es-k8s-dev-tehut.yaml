@@ -1,0 +1,196 @@
+apiVersion: v1
+items:
+  - apiVersion: v1
+    data:
+      filebeat.yaml: |
+        name: pod-logs
+        filebeat.prospectors:
+        - input_type: log
+          paths:
+            - /var/lib/docker/containers/*/*.log
+          symlinks: true
+          json.keys_under_root: true
+         json.add_error_key: true
+          json.message_key: log
+        processors:
+        - add_cloud_metadata:
+        - kubernetes:
+            in_cluster: true
+            namespace: kube-instrumentation
+        output.elasticsearch:
+          hosts: ['es-k8s-logging:9200']
+          username: elastic
+          password: changeme
+    kind: ConfigMap
+    metadata:
+      name: filebeat-config
+      namespace: dev-tehut
+  - apiVersion: apps/v1beta1
+    kind: Deployment
+    metadata:
+      name: kibana-k8s-logging
+      namespace: dev-tehut
+    spec:
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            app: kibana
+            function: logging
+        spec:
+          containers:
+            - env:
+                - name: ELASTICSEARCH_URL
+                  value: 'http://es-k8s-logging:9200'
+              image: 'docker.elastic.co/kibana/kibana:5.5.1'
+              name: kibana
+              ports:
+                - containerPort: 5601
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app: elasticsearch
+        function: logging
+      name: es-k8s-logging
+      namespace: dev-tehut
+    spec:
+      ports:
+        - nodePort: 30920
+          port: 9200
+          protocol: TCP
+      selector:
+        app: elasticsearch
+        function: logging
+      type: NodePort
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app: kibana
+        function: logging
+      name: kibana-k8s-logging
+      namespace: dev-tehut
+    spec:
+      ports:
+        - port: 80
+          protocol: TCP
+          targetPort: 5601
+      selector:
+        app: kibana
+        function: logging
+      type: LoadBalancer
+  - apiVersion: extensions/v1beta1
+    kind: DaemonSet
+    metadata:
+      labels:
+        app: filebeat
+        function: logging
+      name: filebeat-k8s-logging
+      namespace: dev-tehut
+    spec:
+      template:
+        metadata:
+          labels:
+            app: filebeat
+            function: logging
+          name: filebeat
+        spec:
+          containers:
+            - args:
+                - '-e'
+                - '-c'
+                - /etc/filebeat/filebeat.yaml
+              command:
+                - filebeat
+              image: 'docker.elastic.co/beats/filebeat:6.0.0-alpha2'
+              name: filebeat
+              resources:
+                limits:
+                  cpu: 50m
+                  memory: 50Mi
+              securityContext:
+                privileged: true
+                runAsUser: 0
+              volumeMounts:
+                - mountPath: /var/log/containers
+                  name: varlog
+                  readOnly: true
+                - mountPath: /var/log/pods
+                  name: varlogpods
+                  readOnly: true
+                - mountPath: /var/lib/docker/containers
+                  name: varlibdockercontainers
+                  readOnly: true
+                - mountPath: /etc/filebeat
+                  name: config-volume
+          terminationGracePeriodSeconds: 30
+          volumes:
+            - hostPath:
+                path: /var/log/containers
+              name: varlog
+            - hostPath:
+                path: /var/log/pods
+              name: varlogpods
+            - hostPath:
+                path: /var/lib/docker/containers/
+              name: varlibdockercontainers
+            - configMap:
+                name: filebeat-config
+              name: config-volume
+  - apiVersion: apps/v1beta1
+    kind: StatefulSet
+    metadata:
+      name: es-k8s-logging
+      namespace: dev-tehut
+    spec:
+      replicas: 1
+      serviceName: elasticsearch
+      template:
+        metadata:
+          labels:
+            app: elasticsearch
+            function: logging
+        spec:
+          containers:
+            - image: 'docker.elastic.co/elasticsearch/elasticsearch:5.5.1'
+              name: elasticsearch
+              volumeMounts:
+                - mountPath: /data
+                  name: elasticsearch-storage
+          initContainers:
+            - command:
+                - sh
+                - '-c'
+                - 'chown -R 1000:100 /usr/share/elasticsearch/data'
+              image: busybox
+              name: volume-mount-hack
+              volumeMounts:
+                - mountPath: /usr/share/elasticsearch/data
+                  name: data
+          volumes:
+            - args:
+                - '-Ehttp.host=0.0.0.0'
+                - '-Etransport.host=127.0.0.1'
+                - '-Ecluster.name=kubernetes'
+                - '-Ebootstrap.memory_lock=true'
+              command:
+                - bin/elasticsearch
+              env:
+                - name: ES_JAVA_OPTS
+                  value: '-Xms512m -Xmx512m'
+              name: elasticsearch-storage
+              persistentVolumeClaim:
+                claimName: elasticsearch-storage
+              ports:
+                - containerPort: 9200
+        volumeClaimTemplates:
+          - metadata:
+              name: elasticsearch
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 5Gi
+kind: List

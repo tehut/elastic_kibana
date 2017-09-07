@@ -1,4 +1,6 @@
-{
+{local function1(arg) = {appName : arg},
+cow:function1(arg="duck"),
+
 	"apiVersion": "extensions/v1beta1",
 	"kind": "Deployment",
     local appName = "hootlet",
@@ -18,7 +20,7 @@
 			"metadata": {
 				"labels": {
                     [$.spec["best label"]]: "I can count "
-                     + $.spec.selector * 2 + " reasons to poop on you",
+                     + $.spec.selector * 2 + " reasons to poo",
 					"run": appName
 				}
 			},
