@@ -1,29 +1,45 @@
 local daemon = import "../components/es-k8s-daemon-set.jsonnet";
-local namespace = "hootlet";
-local appname = "NAMENAME";
+local namespace = "NAMESPACE VALUE";
+local appname = "NAME VALUE";
+local cpuValue = "CPU VALUE";
+local memoryValue = "MEMORY VALUE";
+
+
 
   local conf = {
   metadata:: {
     name:: appname,
-    namespace:: namespace
+    namespace:: namespace,
+    labels:: {
+        app: "LABEL",
+        foo: "LABEL",
+    },
   },
-  data:: {
-    "filebeat.yaml": "name: pod-logs\nfilebeat.prospectors:\n- input_type: log\n  paths:\n    - /var/lib/docker/containers/*/*.log\n  symlinks: true\n  json.keys_under_root: true\n  json.add_error_key: true\n  json.message_key: log\nprocessors:\n- add_cloud_metadata:\n- kubernetes:\n    in_cluster: true\n    namespace:"+  namespace +"\noutput.elasticsearch:\n  hosts: ['es-k8s-logging:9200']\n  username: elastic\n  password: changeme\n"
-  },
-  
-
-};
+    resources::{
+    limits::{
+        cpu: cpuValue,
+        memory: memoryValue
+       },
+    }
+  };
+ 
 // generate the yaml
-local configMapGen() = 
+local daemonGen() = 
 
-configMap + {
-  data: conf.data,
+daemon + {
   metadata+: {
     name: conf.metadata.name,
-    namespace: conf.metadata.namespace
+    namespace: conf.metadata.namespace,
+    labels: conf.metadata.labels
   },
-  };
+  spec+: {
+    containers+: {
+            resources:{
+                limits: conf.resources.limits
+            },
+} ,
+  }
+};
 
-
-configMapGen()
+daemonGen()
 
